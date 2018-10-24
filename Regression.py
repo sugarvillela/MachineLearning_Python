@@ -104,7 +104,7 @@ def wRandom( n, last ):
     # Make w a random vector, length n
     # Last is a zero vector, length n
     # There's a one-in-a-gazillion chance of w=[0,0,0...] 
-    # Handle that with a while loop
+    # Handle that with a do-while loop
     while True:
         w=np.random.randint( -2, 2, size=n );
         if not np.array_equal( w, last ) :
@@ -172,12 +172,11 @@ def gradientData():#x1 x2 x3 y
     Y=np.array( [1, -1, -1, 1, 1] ) ;
     return ( X, Y )
 
-def sigmoid( w, x ):# Sigmoid function for wtX[i]
-    wtx=np.dot( w, x );
-    return 1/( 1 + np.exp( wtx*-1 ) );
+def sigmoid( fx ):
+    return 1/( 1 + np.exp( fx*-1 ) );
     
-def sigPrime( w, x, y ):# derivative of sigmoid function 1-sigmoid(Y[i]wtX[i])
-    sig=sigmoid( np.dot( y, w ), x );
+def sigPrime( fx ):
+    sig=sigmoid( fx );
     return (1-sig);
     
 def gradDescent( X, Y, setw, ada, halt) :
@@ -192,10 +191,11 @@ def gradDescent( X, Y, setw, ada, halt) :
  
     for h in range( 0, halt ):
         for i in range( 0, len( X ) ) :
-            # print( 'w=', w );
+            print( 'w=', w );
             # print( 'Yi=', Y[i] );
             # print( 'Xi=', X[i] );
-            s=sigPrime( w, X[i], Y[i] );
+            wtx=np.dot( np.dot( Y[i], w ), X[i] );
+            s=sigPrime( wtx );
             s=np.dot( s*Y[i]*ada, X[i] )
             # print( '1-Pi=', s );
             w=np.add( w, s );
