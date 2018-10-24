@@ -5,6 +5,8 @@
 import numpy as np
 from numpy.linalg import inv
 
+# Functions for linear and non-linear regression
+
 def loadsparsedata():#x1 x2 x3 y
     X=np.array( [#cloudy=0, reining=1, sunny=2
         [   1,      2       ],
@@ -95,7 +97,49 @@ def test_fitPoly():
     w=minLeastSquares_ridge( X, Y, 1 )
     print( 'w minLeastSquares_ridge' );
     print( w );
+
+    # Perceptron Algorithm
+def perceptronData():#x1 x2 x3 y
+    X=np.array( [#cloudy=0, reining=1, sunny=2
+        [   -0.4,   0.75    ],
+        [   0,      -0.5    ],
+        [   0.2,    0.45    ], 
+        [   0.1,    0.2     ], 
+        [   0.5,    -0.1    ],
+        [   -1.25,  -0.25   ],
+        [   1.25,   0       ],
+        [   -0.2,   -0.6    ], 
+        [   -0.5,   0.5     ],
+    ] );
+    Y=np.array( [1,1, -1, -1, -1, 1, -1, 1, 1] ) ;
+    return ( X, Y )
+
+def perceptron( X, Y, ada, halt ):
+    # Start with a random vector,  length n
+    w=np.random.randint( -2, 2, size=(1, len( X[0]) ) );
+    # Need a halting function on this, maybe check the last n 
+    # versions of w for sameness.  Likely the algo will never stop
+    # if data are inseparable.  Run until halt...
+    for h in range(0, halt ):
+        for i in range( 0, len( X ) ) :
+            # If wt*Xi different sign, change direction of vector w
+            if np.sign( np.dot( w, X[i] ) ) != np.sign( Y[i] ):
+                nyx=np.dot( X[i], ada*Y[i])
+                w=np.add( w, nyx );
+    return w;
     
+def test_perceptron():
+    (X,Y) = perceptronData();
+    print( 'X' );
+    print( X );
+    print( 'Y' );
+    print( Y );
+    w=perceptron( X, Y, 1, 10 );
+    print( 'perceptron w: -0.6, -0.1' )
+    print( w )
+    #test_perceptron();
+
+
 def main():
     test_linear();
     test_fitPoly();
