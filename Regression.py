@@ -98,7 +98,18 @@ def test_fitPoly():
     print( 'w minLeastSquares_ridge' );
     print( w );
 
-    # Perceptron Algorithm
+# Perceptron Algorithm
+
+def wRandom( n, last ):
+    # Make w a random vector, length n
+    # Last is a zero vector, length n
+    # There's a one-in-a-gazillion chance of w=[0,0,0...] 
+    # Handle that with a while loop
+    while True:
+        w=np.random.randint( -2, 2, size=n );
+        if not np.array_equal( w, last ) :
+            return w;
+
 def perceptronData():#x1 x2 x3 y
     X=np.array( [#cloudy=0, reining=1, sunny=2
         [   -0.4,   0.75    ],
@@ -114,18 +125,28 @@ def perceptronData():#x1 x2 x3 y
     Y=np.array( [1,1, -1, -1, -1, 1, -1, 1, 1] ) ;
     return ( X, Y )
 
-def perceptron( X, Y, ada, halt ):
-    # Start with a random vector,  length n
-    w=np.random.randint( -2, 2, size=(1, len( X[0]) ) );
-    # Need a halting function on this, maybe check the last n 
-    # versions of w for sameness.  Likely the algo will never stop
-    # if data are inseparable.  Run until halt...
+def perceptron( X, Y, setw, ada, halt) :
+    # Unsure if this function will ever halt
+    # Set a 'last' vector and compare after every try: w==last means done
+    # Also set a hard 'halt' in case it never finds a solution
+    # BTW, w is the vector orthogonal to the decision surface
+    last=np.zeros( len( X[0] ) );
+    if( setw is None ):
+        w=wRandom( len( X[0] ), last ); ##np.array( [-1,1,1] );
+    else:
+        w=setw;
+
     for h in range(0, halt ):
         for i in range( 0, len( X ) ) :
             # If wt*Xi different sign, change direction of vector w
             if np.sign( np.dot( w, X[i] ) ) != np.sign( Y[i] ):
                 nyx=np.dot( X[i], ada*Y[i])
                 w=np.add( w, nyx );
+		
+        if np.array_equal( w, last ) :
+            break;
+        last=w;
+	
     return w;
     
 def test_perceptron():
@@ -139,6 +160,65 @@ def test_perceptron():
     print( w )
     #test_perceptron();
 
+# Gradient Descent (batch method)
+def gradientData():#x1 x2 x3 y
+    X=np.array( [#cloudy=0, reining=1, sunny=2
+        [   1,  0.45,   3.25    ], 
+        [   1,  -1.08,  2.2     ],
+        [   1,  .2,     1.18    ],
+        [   1,  -1.18,  .98     ],
+        [   1,  -2.49,  3.59    ]
+    ] );
+    Y=np.array( [1, -1, -1, 1, 1] ) ;
+    return ( X, Y )
+
+def sigmoid( w, x ):# Sigmoid function for wtX[i]
+    wtx=np.dot( w, x );
+    return 1/( 1 + np.exp( wtx*-1 ) );
+    
+def sigPrime( w, x, y ):# derivative of sigmoid function 1-sigmoid(Y[i]wtX[i])
+    sig=sigmoid( np.dot( y, w ), x );
+    return (1-sig);
+    
+def gradDescent( X, Y, setw, ada, halt) :
+    # Unsure if this function will ever halt
+    # Set a 'last' vector and compare after every try: w==last means done
+    # Also set a hard 'halt' in case it never finds a solution
+    last=np.zeros( len( X[0] ) );
+    if( setw is None ):
+        w=wRandom( len( X[0] ), last );
+    else:
+        w=setw;
+ 
+    for h in range( 0, halt ):
+        for i in range( 0, len( X ) ) :
+            # print( 'w=', w );
+            # print( 'Yi=', Y[i] );
+            # print( 'Xi=', X[i] );
+            s=sigPrime( w, X[i], Y[i] );
+            s=np.dot( s*Y[i]*ada, X[i] )
+            # print( '1-Pi=', s );
+            w=np.add( w, s );
+
+        if np.array_equal( w, last ) :
+            break;
+        last=w;
+        
+    return w;
+    # w=gradDescent( X, Y, np.array( [-1,1,1] ), 0.1, 1 );
+    
+def test_gradDescent(  ):
+    (X,Y) = gradientData();
+    print( 'X' );
+    print( X );
+    print( 'Y' );
+    print( Y );
+    w=np.array( [-1,1,1] );
+    ada=0.1;
+    halt=10;
+    w=gradDescent( X, Y, w, ada, halt );
+    print( 'final w' )
+    print( w )
 
 def main():
     test_linear();
