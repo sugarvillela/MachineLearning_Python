@@ -132,10 +132,9 @@ def perceptron( X, Y, setw, ada, halt) :
     # BTW, w is the vector orthogonal to the decision surface
     last=np.zeros( len( X[0] ) );
     if( setw is None ):
-        w=wRandom( len( X[0] ), last ); ##np.array( [-1,1,1] );
+        w=wRandom( len( X[0] ), last ); # np.array( [-1,1,1] );
     else:
         w=setw;
-
     for h in range(0, halt ):
         for i in range( 0, len( X ) ) :
             # If wt*Xi different sign, change direction of vector w
@@ -146,7 +145,6 @@ def perceptron( X, Y, setw, ada, halt) :
         if np.array_equal( w, last ) :
             break;
         last=w;
-	
     return w;
     
 def test_perceptron():
@@ -179,50 +177,59 @@ def sigPrime( fx ):
     sig=sigmoid( fx );
     return (1-sig);
     
-def gradDescent( X, Y, setw, ada, halt) :
-    # Unsure if this function will ever halt
-    # Set a 'last' vector and compare after every try: w==last means done
-    # Also set a hard 'halt' in case it never finds a solution
-    last=np.zeros( len( X[0] ) );
-    if( setw is None ):
-        w=wRandom( len( X[0] ), last );
-    else:
-        w=setw;
- 
+def gradDescent_sochastic( X, Y, w, eta) :
+    halt=1;
     for h in range( 0, halt ):
-        for i in range( 0, len( X ) ) :
-            print( 'w=', w );
-            # print( 'Yi=', Y[i] );
-            # print( 'Xi=', X[i] );
-            wtx=np.dot( np.dot( Y[i], w ), X[i] );
-            s=sigPrime( wtx );
-            s=np.dot( s*Y[i]*ada, X[i] )
-            # print( '1-Pi=', s );
-            w=np.add( w, s );
-
-        if np.array_equal( w, last ) :
-            break;
-        last=w;
-        
+        g=np.zeros( len( w ) );
+        print('g:',g);
+        for i in range( 0, len( Y ) ) :
+            #print( 'w=', w );
+            s=np.dot( w, X[i] );    #wtXi
+            s=np.dot( Y[i], s );    #yi*wtxi
+            s=sigmoid( s );         #sig( yiwtxi )
+            s=1-s;                  #(1-pi)
+            s*=Y[i];                #(1-pi)yi
+            s=np.dot( X[i], s );    #(1-pi)yixi
+            s=np.dot( eta, s );     #eta*(1-pi)yixi
+            w=np.add( w, s );       #w=w+eta*(1-pi)yixi
     return w;
-    # w=gradDescent( X, Y, np.array( [-1,1,1] ), 0.1, 1 );
     
-def test_gradDescent(  ):
-    (X,Y) = gradientData();
+def gradDescent_batch( X, Y, w, eta) :
+    halt=1;
+    for h in range( 0, halt ):
+        g=np.zeros( len( w ) );
+        print('g:',g);
+        for i in range( 0, len( Y ) ) :
+            print( 'g=', g );
+            s=np.dot( w, X[i] );    #wtXi
+            s=np.dot( Y[i], s );    #yi*wtxi
+            s=sigmoid( s );         #sig( yiwtxi )
+            s=1-s;                  #(1-pi)
+            s*=Y[i];                #(1-pi)yi
+            s=np.dot( X[i], s );    #(1-pi)yixi
+            s=np.dot( s, -1 );      #-(1-pi)yixi
+            w=np.add( w, s );       #w=w+eta*(1-pi)yixi
+        g=np.dot( g, 1/len(Y) );    #1/m( g )
+        g=np.dot( eta, g );
+        w=np.subtract( w, g );
+    return w;
+    
+def test_gradDescent():
+    (X,Y) = exampleData();
     print( 'X' );
     print( X );
     print( 'Y' );
     print( Y );
     w=np.array( [-1,1,1] );
-    ada=0.1;
-    halt=10;
-    w=gradDescent( X, Y, w, ada, halt );
+    eta=0.1;
+    w=gradDescent_batch( X, Y, w, eta );
     print( 'final w' )
     print( w )
 
 def main():
     test_linear();
     test_fitPoly();
+    test_gradDescent();
 
     
 if __name__ == '__main__':
