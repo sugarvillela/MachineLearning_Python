@@ -5,7 +5,7 @@
 import numpy as np
 from numpy.linalg import inv
 
-# Functions for linear and non-linear regression
+#================Functions for linear and non-linear regression===========
 
 def loadsparsedata():#x1 x2 x3 y
     X=np.array( [#cloudy=0, reining=1, sunny=2
@@ -98,8 +98,7 @@ def test_fitPoly():
     print( 'w minLeastSquares_ridge' );
     print( w );
 
-# Perceptron Algorithm
-
+#================Perceptron Algorithm=====================================
 def wRandom( n, last ):
     # Make w a random vector, length n
     # Last is a zero vector, length n
@@ -156,34 +155,24 @@ def test_perceptron():
     w=perceptron( X, Y, 1, 10 );
     print( 'perceptron w: -0.6, -0.1' )
     print( w )
-    #test_perceptron();
 
-# Gradient Descent (batch method)
-def gradientData():#x1 x2 x3 y
-    X=np.array( [#cloudy=0, reining=1, sunny=2
-        [   1,  0.45,   3.25    ], 
-        [   1,  -1.08,  2.2     ],
-        [   1,  .2,     1.18    ],
-        [   1,  -1.18,  .98     ],
-        [   1,  -2.49,  3.59    ]
-    ] );
-    Y=np.array( [1, -1, -1, 1, 1] ) ;
-    return ( X, Y )
+#================Gradient Descent=========================================
 
+# Sigmoid maps values to somewhere between 0 and 1
+# You can also use ReLU, which is max(0,fx)
 def sigmoid( fx ):
     return 1/( 1 + np.exp( fx*-1 ) );
-    
-def sigPrime( fx ):
-    sig=sigmoid( fx );
-    return (1-sig);
-    
+
+# This is from some in-class slides
+# Sochastic means it updates w after every calculation
+# Simple, no regularizer
 def gradDescent_sochastic( X, Y, w, eta) :
     halt=1;
     for h in range( 0, halt ):
         g=np.zeros( len( w ) );
         print('g:',g);
         for i in range( 0, len( Y ) ) :
-            #print( 'w=', w );
+            print( 'w=', w );       #This outputs current w to match slide example
             s=np.dot( w, X[i] );    #wtXi
             s=np.dot( Y[i], s );    #yi*wtxi
             s=sigmoid( s );         #sig( yiwtxi )
@@ -193,28 +182,19 @@ def gradDescent_sochastic( X, Y, w, eta) :
             s=np.dot( eta, s );     #eta*(1-pi)yixi
             w=np.add( w, s );       #w=w+eta*(1-pi)yixi
     return w;
-    
-def gradDescent_batch( X, Y, w, eta) :
-    halt=1;
-    for h in range( 0, halt ):
-        g=np.zeros( len( w ) );
-        print('g:',g);
-        for i in range( 0, len( Y ) ) :
-            print( 'g=', g );
-            s=np.dot( w, X[i] );    #wtXi
-            s=np.dot( Y[i], s );    #yi*wtxi
-            s=sigmoid( s );         #sig( yiwtxi )
-            s=1-s;                  #(1-pi)
-            s*=Y[i];                #(1-pi)yi
-            s=np.dot( X[i], s );    #(1-pi)yixi
-            s=np.dot( s, -1 );      #-(1-pi)yixi
-            w=np.add( w, s );       #w=w+eta*(1-pi)yixi
-        g=np.dot( g, 1/len(Y) );    #1/m( g )
-        g=np.dot( eta, g );
-        w=np.subtract( w, g );
-    return w;
-    
-def test_gradDescent():
+
+def exampleData():# From slide set
+    X=np.array( [
+        [   1,  0.45,   3.25    ], 
+        [   1,  -1.08,  2.2     ],
+        [   1,  .2,     1.18    ],
+        [   1,  -1.18,  .98     ],
+        [   1,  -2.49,  3.59    ]
+    ] );
+    Y=np.array( [1, -1, -1, 1, 1] ) ;
+    return ( X, Y )
+
+def test_exampleData(  ):
     (X,Y) = exampleData();
     print( 'X' );
     print( X );
@@ -222,15 +202,199 @@ def test_gradDescent():
     print( Y );
     w=np.array( [-1,1,1] );
     eta=0.1;
-    w=gradDescent_batch( X, Y, w, eta );
+    w=gradDescent_sochastic( X, Y, w, eta );
     print( 'final w' )
     print( w )
+	
+#================Below: Same thing but batch with regularizer=============	
+
+# First, some given code for loading train and test files
+def loadsparsedata(fn):
+    fp = open(fn,"r")
+    lines = fp.readlines()
+    maxf = 0;
+    for line in lines:
+        for i in line.split()[1::2]:
+            maxf = max(maxf,int(i))
+    
+    X = np.zeros((len(lines),maxf))
+    Y = np.zeros((len(lines)))
+    
+    for i, line in enumerate(lines):
+        values = line.split()
+        Y[i] = int(values[0])
+        for j,v in zip(values[1::2],values[2::2]):
+            X[i,int(j)-1] = int(v)
+    
+    return X,Y
+
+# Data in file is 0-1: map -1 to 0
+def getXY(fn):
+    (X,Y) = loadsparsedata(fn);
+    # add column of 1s as zeroth feature
+    X = np.column_stack((np.ones(X.shape[0]),X)) 
+    # change from 0's to -1's
+    Y[Y==0] = -1;
+    return X,Y
+
+# For deriviative of sum of squared w   
+def reg( lam, m, w ):# passing in 1 for m
+    w1=np.insert( w[1:], 0, 0 );
+    return np.dot( w1, 2*lam/m );
+
+# To save time in dev, set hardHalt low 
+# If you've got an hour to kill, set high and wait for condHalt
+# Halts after 5,000 to 50,000 iterations of inner loop
+def gradDescent_batch( X, Y, w, eta, lam ) :
+    hardHalt=100000;
+    condHalt=1e-10;
+    minL=10000000;
+    for h in range( 0, hardHalt ):
+        # w only changes at end of batch, so just add regularizer to g now
+        g=reg( lam, 1, w );#regularization
+        for i in range( 0, len( Y ) ) :
+            #Each step Barney-style with comment
+            s=np.dot( w, X[i] );    # wtXi
+            s=np.dot( Y[i], s );    # yi*wtxi
+            s=sigmoid( s );         # sig( yiwtxi )
+            s=s*(1-s);              # (1-pi)
+            s*=Y[i];                # (1-pi)yi
+            s=np.dot( X[i], s );    # (1-pi)yixi
+            s=np.dot( s, -1 );      # -(1-pi)yixi
+            g=np.add( g, s );
+        g=np.dot( g, 1/len(Y) );# 1/m( -(1-pi)yixi )
+        g=np.dot( eta, g );	# n/m( -(1-pi)yixi ) n being eta
+        w=np.subtract( w, g );	# w-=g
+        lensq=np.dot( g, g )	# lensq = how much change is happening each iteration
+        if h and lensq<condHalt:# Quit when slope gets near zero
+            print( 'condHalt @ h=', h );
+            return w; 
+        if lensq<minL:		# Just for display, keep track of smallest change so far
+            minL=lensq; 
+        if h%10000==0:		# Output something periodically to see it working
+            print( 'minL', lam, h, minL );
+    return w;
+
+# this sets up initial w and eta and runs gradientDescent
+def learnlogreg(X,Y,lam):
+    (m,n) = X.shape;
+    w = np.zeros((n));
+    eta = np.sqrt(2.5/lam);
+    return gradDescent_batch( X, Y, w, eta, lam );
+
+# This code is given
+def linearerror(X,Y,w):
+    # returns error *rate* for linear classifier with coefficients w
+    m = Y.shape[0]
+    predy = X.dot(w)
+    err = (Y[predy>=0]<0.5).sum() + (Y[predy<0]>=0.5).sum()
+    return err/m
+
+# This runs gradDescent_batch on the training files
+def testGradDescent_batch():
+    # getXY gets the data, adds the offset column to X and fixes the 0's in Y
+    (X,Y) = getXY("spamtrain.txt");
+    lam=.001;
+    w = learnlogreg(X,Y,lam);
+    print( 'err=',linearerror(X,Y,w) );
+
+#================Use batch gradDescent with cross-validation==============
+
+import matplotlib.pyplot as plt
+from IPython.display import display, clear_output
+
+# This splits training file into div-size pieces and finds best lambda
+def crossval( trainFile, lambdas, div ):
+    if( div and div-1 ):        #assert non-zero denominator
+        denom=div*(div-1);          # for avg over number of tests
+    else:
+        return None;
+        
+    (X,Y) = getXY( trainFile );
+    Xcross=np.split( X, div );#returns list
+    Ycross=np.split( Y, div );
+    errs=np.zeros( len( lambdas ) );
+    bestW=0;
+    bestLam=0;
+    minErr=1000000;
+    h=0;
+    
+    for lam in lambdas:
+        print('crossVal: lambda =', lam );
+        for V, VY in zip( Xcross, Ycross ): # the splits of X, Y
+            w=learnlogreg( V, VY, lam );
+            curErr=0;
+            for T, TY in zip( Xcross, Ycross ):# splits of X, Y that are not V
+                if V is not T:
+                    curErr+=linearerror( T, TY, w );
+            if( curErr<minErr ):
+                minErr=curErr;
+                bestW=w;
+                bestLam=lam;
+            errs[h]+=curErr;
+        errs[h]/=denom;
+        h+=1;
+    return ( bestLam, bestW, errs );
+
+# This finds best lambda, training with train file and testing on test file
+def trainTest( trainFile, testFile, lambdas ):
+    (trainX,trainY) = getXY("spamtrain.txt");
+    (testX,testY) = getXY("spamtest.txt");
+    errs=np.zeros( len( lambdas ) );
+    bestW=0;
+    bestLam=0;
+    minErr=1000000;
+    h=0;
+    for lam in lambdas:
+        print('Test: lambda =', lam );
+        w=learnlogreg( trainX, trainY, lam );
+        errs[h]=linearerror( testX, testY, w );
+        if( errs[h]<minErr ):
+            minErr=errs[h];
+            bestW=w;
+            bestLam=lam;
+        h+=1;
+    return ( bestLam, bestW, errs );
+
+# This is a hack to make lambdas fit into graph, totally avoidable 
+# if I knew more about matplotlib
+def lamToTrunc( lambdas ):
+    arr=np.array2string( lambdas )[1:-1].split(' ');
+    for i in range( 0, len(arr) ):
+        arr[i]=arr[i].split('.')[0]+'e'+arr[i].split('e')[1];
+    return arr;
+
+def dispLamVsErr( lambdas, valErrs, testErrs ):
+    xtix=lamToTrunc( lambdas );
+    x_plot = range(len(xtix));
+    plt.plot( x_plot, valErrs, label='V' );#'o', 
+    plt.plot( x_plot, testErrs, label='T' );
+    plt.xticks(x_plot, xtix );
+    plt.xlabel('Lambda');
+    plt.ylabel('Error');
+    plt.show();
+    
+def test_crossval():
+    lambdas=np.logspace(-3,2,10);#-3 to 2 is log range, 10 is size of returned list
+    print ('Running Crossval...');
+    ( bestLam, bestW, valErrs )=crossval( "spamtrain.txt",lambdas, 5 )
+    print('bestLam =', bestLam );
+    print('valErrs =', valErrs );
+    
+    print ('Running Test...');
+    ( bestLam, bestW, testErrs )=trainTest( "spamtrain.txt", "spamtest.txt", lambdas );
+    print('bestLam =', bestLam );
+    print('testErrs =', testErrs );
+    print( );
+    dispLamVsErr( lambdas, valErrs, testErrs );
+	
 
 def main():
     test_linear();
     test_fitPoly();
     test_gradDescent();
-
+    test_gradDescent_batch();
+    test_crossval();
     
 if __name__ == '__main__':
 	main()
